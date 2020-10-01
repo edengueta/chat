@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express Chat</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        
+        .chat {
+            margin: 25px;
+            padding: 25px 25px 25px 25px;
+            width: 600px;
+            border-radius: 10px;
+            border: solid 1px rgb(231, 231, 231);
+            position: relative;
+        }
+        
+        .message-author {
+            color: rgb(97, 97, 97);
+        }
+        
+        .message-text {
+            font-weight: bold;
+        }
+        
+        .message-time {
+            font-size: smaller;
+            color: rgb(180, 180, 180);
+        }
+        
+        .message-edited {
+            font-size: smaller;
+            color: rgb(224, 180, 180);
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 5px 0;
+            border-bottom: rgba(47, 79, 79, 0.25) solid 1px;
+        }
+        
+        .message:nth-last-child(1) {
+            margin-bottom: 60px;
+        }
+        
+        button.editBtn {
+            border: none;
+            outline: none;
+            height: 30px;
+            width: 30px;
+            font-size: 16px;
+            background-color: darkslategray;
+            color: white;
+            position: absolute;
+            right: 60px;
+        }
+        
+        button.removeBtn {
+            border: none;
+            outline: none;
+            height: 30px;
+            width: 30px;
+            font-size: 16px;
+            background-color: rgb(160, 23, 23);
+            color: white;
+            position: absolute;
+            right: 20px;
+        }
+        
+        button.editBtn:hover,
+        button.removeBtn:hover,
+        .submitBtn:hover,
+        .clearBtn:hover {
+            cursor: pointer;
+        }
+        
+        input[type=text] {
+            outline: none;
+            border-width: 0 0 1px 0;
+            width: 200px;
+            margin-right: 30px;
+        }
+        
+        .submitBtn {
+            border-radius: 25px;
+            height: 50px;
+            width: 50px;
+            text-align: center;
+            border: none;
+            outline: none;
+            background-color: rgb(0, 168, 8);
+            color: white;
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+        }
+        
+        .clearBtn {
+            border: none;
+            outline: none;
+            background-color: rgb(184, 190, 174);
+            color: black;
+            position: absolute;
+            padding: 5px 15px;
+            right: 20px;
+            bottom: -50px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat">
+        <div id="history">
+            Loading...
+        </div>
+
+        <form>
+            <input type="text" name="name" placeholder="Name">
+            <input type="text" name="message" placeholder="Message">
+            <input type="submit" class="submitBtn" value="➜">
+            <input type="button" class="clearBtn" value="Clear">
+            <!-- <input type="hidden" class="editBtn removeBtn"> -->
+        </form>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js" type="text/javascript"></script>
+    <script>
+        const form = document.querySelector('form');
+        const chat = document.querySelector('#history');
+        const clearBtn = document.querySelector('.clearBtn');
+        const editBtn = document.querySelector('.editBtn');
+        const removeBtn = document.querySelector('.removeBtn');
+        const serverURL = 'http://localhost:8080';
+
+        clearBtn.addEventListener('click', e => {
+            e.preventDefault();
+            deleteHistory();
+        });
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const name = form.name.value;
+            const message = form.message.value;
+            sendMessage(name, message);
+        });
+
+        async function sendMessage(name, message) {
+            function checkTime() {
+                return moment().format('HH:mm');
+            }
+            const response = await fetch(`${serverURL}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    message,
+                    time: checkTime(),
+                    edited: ""
+
+                })
+            });
+            const messages = await response.json();
+            renderMessages(messages);
+        }
+
+        async function editMessage(messageID) {
+            function nullVarification(editAnswer) {
+                if (editAnswer === null) {
+                    return "";
+                } else {
+                    return editAnswer;
+                }
+            }
+            const response = await fetch(`${serverURL}/messages/${messageID}/${nullVarification(prompt("Edit your message:"))}`, {
+                method: 'PUT',
+            });
+            const messages = await response.json();
+            renderMessages(messages);
+        }
+
+        async function deleteHistory() {
+            const response = await fetch(`${serverURL}/messages`, {
+                method: 'DELETE'
+            })
+            const messages = await response.json();
+            renderMessages(messages);
+        };
+
+        async function deleteMessage(messageID) {
+            const response = await fetch(`${serverURL}/messages/${messageID}`, {
+                method: 'DELETE',
+            })
+            const messages = await response.json();
+            renderMessages(messages);
+        };
+
+        async function readMessages() {
+            const response = await fetch(`${serverURL}/messages`);
+            const messages = await response.json();
+            renderMessages(messages);
+        }
+
+        function renderMessages(messages) {
+
+            chat.innerHTML = messages.reduce((html, {
+                name,
+                message,
+                time,
+                edited,
+                id
+            }) => {
+                html += `
+          <div class="message">
+            <span class="message-author">${name}: </span>
+            <span class="message-text">${message}</span>
+            <button class="editBtn" onclick="editMessage(${id})">✎</button>
+            <button class="removeBtn" onclick="deleteMessage(${id})">X</button>
+            <br><span class="message-time">${time}</span><span class="message-edited"> ${edited}</span>
+          </div>
+        `;
+                return html;
+            }, '');
+        }
+
+        readMessages();
+    </script>
+</body>
+
+</html>
