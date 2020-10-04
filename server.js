@@ -12,13 +12,13 @@ function saveUsers(users) {
     fs.writeFileSync('users.json', JSON.stringify(users), { encoding: 'utf-8' });
 }
 
-app.post('/users', (req, res) => {
-    users.push({...req.body });
-    saveUsers(users);
+app.get('/users', (req, res) => {
     res.send(users);
 });
 
-app.get('/users', (req, res) => {
+app.post('/users', (req, res) => {
+    users.push({...req.body });
+    saveUsers(users);
     res.send(users);
 });
 

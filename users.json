@@ -1,1 +1,17 @@
-[{ "name": "eden" }, { "name": "edennn" }]
+[{
+        "name": "anonymous",
+        "permission": {
+            "edit": false,
+            "delete": false,
+            "clear": false
+        }
+    },
+    {
+        "name": "Admin",
+        "permission": {
+            "edit": true,
+            "delete": true,
+            "clear": true
+        }
+    }
+]

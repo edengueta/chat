@@ -123,7 +123,7 @@
         </div>
         <form>
             <span id="userName">name</span> <span>:</span>
-            <input type="text" name="message" placeholder="Message">
+            <input type="text" name="message" placeholder="Message" required>
             <input type="submit" class="submitBtn" value="➜">
             <input type="button" class="clearBtn" value="Clear">
         </form>
@@ -139,27 +139,40 @@
 
         const serverURL = 'http://localhost:8080';
 
-        createUser(prompt("your name:"));
+        checkUser(prompt("your name:"));
 
-        async function createUser(user) {
-            let response = await fetch(`${serverURL}/users`);
-            let usersArray = await response.json();
-            for (let i = 0; i === usersArray.length - 1; i++) {
-                if (usersArray[i].name == user) {
+        async function checkUser(user) {
+            if (user === null || user == "") {
+                user = "anonymous";
+            }
+
+            const response = await fetch(`${serverURL}/users`);
+            const usersArray = await response.json();
+            for (let i of usersArray) {
+                if (i.name == user) {
                     displayName(user);
                     return
                 }
-                await fetch(`${serverURL}/users`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: user,
-                    })
-                });
-                displayName(user);
             }
+            createUser(user);
+        }
+
+        async function createUser(user) {
+            await fetch(`${serverURL}/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: user,
+                    permission: {
+                        edit: 'self',
+                        delete: 'self',
+                        clear: false
+                    }
+                })
+            });
+            displayName(user);
         }
 
         function displayName(user) {
@@ -200,36 +213,88 @@
             renderMessages(messages);
         }
 
-        async function editMessage(messageID) {
-            function nullVarification(editAnswer) {
-                if (editAnswer === null) {
-                    return "";
-                } else {
-                    return editAnswer;
-                }
+        async function deleteHistory() {
+            let isAuthorized = checkClearPermissions();
+            if (isAuthorized) {
+                const response = await fetch(`${serverURL}/messages`, {
+                    method: 'DELETE'
+                })
+                const messages = await response.json();
+                renderMessages(messages);
+            } else return;
+        };
+
+        function checkClearPermissions() {
+            const name = userName.innerHTML;
+            if (name == "Admin") {
+                return true;
+            } else {
+                alert(`Only Admins can clear all messages`);
+                return false;
             }
-            const response = await fetch(`${serverURL}/messages/${messageID}/${nullVarification(prompt("Edit your message:"))}`, {
-                method: 'PUT',
-            });
-            const messages = await response.json();
-            renderMessages(messages);
+        };
+
+        async function editMessage(messageID, messageAuthor) {
+            let isAuthorized = checkEditPermissions(messageAuthor);
+            if (isAuthorized) {
+                function nullVarification(editAnswer) {
+                    if (editAnswer === null) {
+                        return "";
+                    } else {
+                        return editAnswer;
+                    }
+                }
+                const response = await fetch(`${serverURL}/messages/${messageID}/${nullVarification(prompt("Edit your message:"))}`, {
+                    method: 'PUT',
+                });
+                const messages = await response.json();
+                renderMessages(messages);
+            } else return;
+        };
+
+        function checkEditPermissions(user) {
+            const name = userName.innerHTML;
+            if (name !== user && name == "Admin") {
+                alert(`Hey Admin, it's a democratic chat. Even you cannot edit other user's messages.`)
+                return false;
+            } else if (name === user && name === "anonymous") {
+                alert(`Hey, you have to login if you want to edit your own messages.`);
+                return false;
+            } else if (name !== user) {
+                alert(`Hey ${name}, I'm sorry. You can only edit your own messages.`)
+                return false;
+            } else if (name === user && name !== "anonymous") {
+                return true;
+            };
+
+        }
+        async function deleteMessage(messageID, messageAuthor) {
+            let isAuthorized = checkDeletePermissions(messageAuthor);
+            if (isAuthorized) {
+                const response = await fetch(`${serverURL}/messages/${messageID}`, {
+                    method: 'DELETE',
+                })
+                const messages = await response.json();
+                renderMessages(messages);
+            } else return;
+
+        };
+
+        function checkDeletePermissions(user) {
+            const name = userName.innerHTML;
+            if (name == "Admin") {
+                return true;
+            } else if (name === user && name === "anonymous") {
+                alert(`Hey, you have to login if you want to delete your own messages.`);
+                return false;
+            } else if (name !== user) {
+                alert(`Hey ${name}, I'm sorry. You can only delete your own messages.`)
+                return false;
+            } else if (name === user && name !== "anonymous") {
+                return true;
+            };
         }
 
-        async function deleteHistory() {
-            const response = await fetch(`${serverURL}/messages`, {
-                method: 'DELETE'
-            })
-            const messages = await response.json();
-            renderMessages(messages);
-        };
-
-        async function deleteMessage(messageID) {
-            const response = await fetch(`${serverURL}/messages/${messageID}`, {
-                method: 'DELETE',
-            })
-            const messages = await response.json();
-            renderMessages(messages);
-        };
 
         async function readMessages() {
             const response = await fetch(`${serverURL}/messages`);
@@ -248,10 +313,10 @@
             }) => {
                 html += `
           <div class="message">
-            <span class="message-author">${name}: </span>
+            <span class="message-author">${name}:</span>
             <span class="message-text">${message}</span>
-            <button class="editBtn" onclick="editMessage('${id}')">✎</button>
-            <button class="removeBtn" onclick="deleteMessage('${id}')">X</button>
+            <button class="editBtn" onclick="editMessage('${id}','${name}')">✎</button>
+            <button class="removeBtn" onclick="deleteMessage('${id}','${name}')">X</button>
             <br><span class="message-time">${time}</span>
             <span class="message-edited">${edited}</span>
           </div>
