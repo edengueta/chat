@@ -4,11 +4,29 @@ const app = express();
 const { v4: uuidv4 } = require('uuid');
 
 let history = require('./history.json') || [];
+let users = require('./users.json') || [];
+
+app.use(express.json());
+
+function saveUsers(users) {
+    fs.writeFileSync('users.json', JSON.stringify(users), { encoding: 'utf-8' });
+}
+
+app.post('/users', (req, res) => {
+    users.push({...req.body });
+    saveUsers(users);
+    res.send(users);
+});
+
+app.get('/users', (req, res) => {
+    res.send(users);
+});
+
 
 function saveHistory(history) {
     fs.writeFileSync('history.json', JSON.stringify(history), { encoding: 'utf-8' });
 }
-app.use(express.json());
+
 
 app.get('/', (req, res) => {
     res.send(
@@ -59,7 +77,5 @@ app.post('/messages', (req, res) => {
     saveHistory(history);
     res.send(history);
 });
-
-
 
 app.listen(8080);

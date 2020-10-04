@@ -121,9 +121,8 @@
         <div id="history">
             Loading...
         </div>
-
         <form>
-            <input type="text" name="name" placeholder="Name">
+            <span id="userName">name</span> <span>:</span>
             <input type="text" name="message" placeholder="Message">
             <input type="submit" class="submitBtn" value="➜">
             <input type="button" class="clearBtn" value="Clear">
@@ -136,7 +135,37 @@
         const clearBtn = document.querySelector('.clearBtn');
         const editBtn = document.querySelector('.editBtn');
         const removeBtn = document.querySelector('.removeBtn');
+        const userName = document.querySelector('#userName');
+
         const serverURL = 'http://localhost:8080';
+
+        createUser(prompt("your name:"));
+
+        async function createUser(user) {
+            let response = await fetch(`${serverURL}/users`);
+            let usersArray = await response.json();
+            for (let i = 0; i === usersArray.length - 1; i++) {
+                if (usersArray[i].name == user) {
+                    displayName(user);
+                    return
+                }
+                await fetch(`${serverURL}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: user,
+                    })
+                });
+                displayName(user);
+            }
+        }
+
+        function displayName(user) {
+            userName.innerHTML = user;
+        }
+
 
         clearBtn.addEventListener('click', e => {
             e.preventDefault();
@@ -145,9 +174,10 @@
 
         form.addEventListener('submit', e => {
             e.preventDefault();
-            const name = form.name.value;
             const message = form.message.value;
+            const name = userName.innerHTML;
             sendMessage(name, message);
+            form.message.value = "";
         });
 
         async function sendMessage(name, message) {
@@ -222,7 +252,8 @@
             <span class="message-text">${message}</span>
             <button class="editBtn" onclick="editMessage('${id}')">✎</button>
             <button class="removeBtn" onclick="deleteMessage('${id}')">X</button>
-            <br><span class="message-time">${time}</span><span class="message-edited"> ${edited}</span>
+            <br><span class="message-time">${time}</span>
+            <span class="message-edited">${edited}</span>
           </div>
         `;
                 return html;
